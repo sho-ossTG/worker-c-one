@@ -2,7 +2,7 @@ const { execFile } = require("child_process");
 const path = require("path");
 
 const CACHE = new Map();
-const TTL_MS = 10 * 60 * 1000;
+const TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 function cacheGet(key) {
   const item = CACHE.get(key);
@@ -25,7 +25,10 @@ function runYtDlp(inputUrl) {
     const args = [
       "--no-playlist",
       "--no-warnings",
-      "-f", "bv*+ba/b",
+      "--add-header",
+      "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "-f",
+      "bv*+ba/b",
       "-g",
       inputUrl
     ];
