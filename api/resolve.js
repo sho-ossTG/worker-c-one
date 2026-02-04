@@ -1,9 +1,8 @@
 const { execFile } = require("child_process");
 const path = require("path");
 
-// In-memory cache (may reset anytime on serverless; still useful)
 const CACHE = new Map();
-const TTL_MS = 10 * 60 * 1000; // 10 minutes
+const TTL_MS = 10 * 60 * 1000;
 
 function cacheGet(key) {
   const item = CACHE.get(key);
@@ -26,7 +25,6 @@ function runYtDlp(inputUrl) {
     const args = [
       "--no-playlist",
       "--no-warnings",
-      "--quiet",
       "-f", "bv*+ba/b",
       "-g",
       inputUrl
@@ -34,7 +32,7 @@ function runYtDlp(inputUrl) {
 
     execFile(ytdlpPath, args, { timeout: 20000 }, (err, stdout, stderr) => {
       if (err) {
-        reject(new Error((stderr || err.message || String(err)).slice(0, 800)));
+        reject(new Error(String(stderr || err.message || err)));
         return;
       }
       const directUrl = String(stdout).trim().split("\n").filter(Boolean)[0] || "";
@@ -71,7 +69,7 @@ module.exports = async (req, res) => {
     if (!directUrl || !directUrl.startsWith("http")) {
       res.statusCode = 502;
       res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify({ error: "yt-dlp returned empty/invalid url" }));
+      res.end(JSON.stringify({ error: "yt-dlp returned empty or invalid url" }));
       return;
     }
 
@@ -83,6 +81,11 @@ module.exports = async (req, res) => {
   } catch (e) {
     res.statusCode = 500;
     res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ error: "yt-dlp failed" }));
+    res.end(
+      JSON.stringify({
+        error: "yt-dlp failed",
+        detail: String(e && e.message ? e.message : e).slice(0, 1200)
+      })
+    );
   }
 };
