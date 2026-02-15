@@ -1,46 +1,6 @@
 const { execFile } = require("child_process");
 const path = require("path");
 
-const CACHE = new Map();
-const TTL_MS = 10 * 60 * 1000; // 10 minutes
-
-function cacheGet(key) {
-  const item = CACHE.get(key);
-  if (!item) return null;
-  if (Date.now() - item.time > TTL_MS) {
-    CACHE.delete(key);
-    return null;
-  }
-  return item.value;
-}
-
-function cacheSet(key, value) {
-  CACHE.set(key, { value, time: Date.now() });
-}
-
-function aliveHtml() {
-  return `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Alive</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body { background:#000; color:#00ff5a; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; margin:0; }
-    .wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; padding:24px; text-align:center; }
-    .badge { border:1px solid #00ff5a; padding:10px 14px; border-radius:10px; }
-    .small { color:#66ff99; opacity:0.85; font-size:14px; }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="badge">JIPI IS ALIVE</div>
-    <div class="small">OK</div>
-  </div>
-</body>
-</html>`;
-}
-
 function runYtDlp(inputUrl) {
   return new Promise((resolve, reject) => {
     const ytdlpPath = path.join(process.cwd(), "bin", "dlp-jipi");
@@ -77,19 +37,11 @@ module.exports = async (req, res) => {
 
     const inputUrl = String(req.query.url || "").trim();
 
-    // If no url param, show alive page (green on black)
+    // If no url param, show alive text
     if (!inputUrl) {
       res.statusCode = 200;
-      res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.end(aliveHtml());
-      return;
-    }
-
-    const cached = cacheGet(inputUrl);
-    if (cached) {
-      res.statusCode = 200;
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify({ url: cached, cached: true }));
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.end("Addon is alive.");
       return;
     }
 
@@ -100,8 +52,6 @@ module.exports = async (req, res) => {
       res.end(JSON.stringify({ error: "yt-dlp returned empty or invalid url" }));
       return;
     }
-
-    cacheSet(inputUrl, directUrl);
 
     res.statusCode = 200;
     res.setHeader("Content-Type", "application/json");
