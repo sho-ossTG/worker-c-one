@@ -37,11 +37,30 @@ module.exports = async (req, res) => {
 
     const inputUrl = String(req.query.url || "").trim();
 
-    // If no url param, show alive text
+    // Alive page (green on black, like the screenshot)
     if (!inputUrl) {
+      const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Alive</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { background:#000; color:#00ff5a; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; margin:0; }
+    .wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+    .badge { border:1px solid #00ff5a; padding:14px 18px; border-radius:12px; box-shadow: 0 0 0 2px rgba(0,255,90,0.12) inset; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="badge">Addon is alive.</div>
+  </div>
+</body>
+</html>`;
+
       res.statusCode = 200;
-      res.setHeader("Content-Type", "text/plain; charset=utf-8");
-      res.end("Addon is alive.");
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.end(html);
       return;
     }
 
