@@ -54,22 +54,26 @@ module.exports = async (req, res) => {
     const inputUrl = String(req.query.url || "").trim();
 
     if (!inputUrl) {
-      const html = `<!doctype html>
-<html>
+      const html = `<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Alive</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body { background:#000; color:#00ff5a; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; margin:0; }
-    .wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
-    .badge { border:1px solid #00ff5a; padding:14px 18px; border-radius:12px; box-shadow: 0 0 0 2px rgba(0,255,90,0.12) inset; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jipi Worker (C) - Status</title>
+    <style>
+        body { background: #000; color: #00ff5a; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .status-box { border: 1px solid #00ff5a; padding: 30px; border-radius: 12px; box-shadow: 0 0 20px rgba(0,255,90,0.15); text-align: center; max-width: 400px; }
+        .dot { height: 12px; width: 12px; background-color: #00ff5a; border-radius: 50%; display: inline-block; margin-right: 12px; box-shadow: 0 0 8px #00ff5a; animation: blink 1.5s infinite; }
+        @keyframes blink { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.9); } 100% { opacity: 1; transform: scale(1); } }
+        h1 { font-size: 1.5rem; margin: 0 0 10px 0; letter-spacing: 1px; }
+        p { color: #888; margin: 0; font-size: 0.9rem; }
+    </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="badge">Addon is alive.</div>
-  </div>
+    <div class="status-box">
+        <h1><span class="dot"></span>WORKER (C) IS ONLINE</h1>
+        <p>Awaiting resolution requests from Broker (B)...</p>
+    </div>
 </body>
 </html>`;
 
