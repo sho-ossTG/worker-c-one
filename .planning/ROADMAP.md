@@ -2,22 +2,72 @@
 
 ## Overview
 
-Worker C is a working but untrustworthy codebase — the status page lies, the platform config is wrong, and the clone documentation is missing. This roadmap delivers two things: a clean, honest implementation the owner can read and trust (Phase 1), followed by airtight documentation so any clone of the worker is configured correctly from day one (Phase 2). Phase 1 fixes the code; Phase 2 hardens the operational story.
+This roadmap covers the active milestone (v1.1 — Diagnostics and Connectivity). Completed v1.0 history is preserved below.
 
-## Phases
+## Active Milestone: v1.1 — Diagnostics and Connectivity
+
+**Goal:** Operators can verify Server B is reachable from a worker instance, and Server B developers have a ready-made curl snippet to test /resolve.
+
+### Phases
 
 **Phase Numbering:**
 - Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+- Decimal phases (3.1, 3.2): Urgent insertions if needed (marked with INSERTED)
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [x] **Phase 1: Code Rebuild and Stats Hardening** - Rebuild api/resolve.js with correct platform config, honest status page, and in-session diagnostics
-- [x] **Phase 2: Documentation Hardening** - Write CLONE.md and rewrite SERVER_B_GUIDE.md so operators can't misconfigure a worker (completed 2026-02-26)
+- [ ] **Phase 3: Server B Connectivity Check** - Status page pings SERVER_B_URL and shows reachable/unreachable/not-configured, docs updated for the new env var
+- [ ] **Phase 4: Resolve Curl Snippet** - Status page displays a ready-made curl command for /resolve with correct auth header
 
-## Phase Details
+### Phase Details
 
-### Phase 1: Code Rebuild and Stats Hardening
+#### Phase 3: Server B Connectivity Check
+**Goal**: Operators can verify whether their worker instance can reach Server B directly from the status page — with neutral display when connectivity check is not configured
+**Depends on**: Nothing (first v1.1 phase; v1.0 already complete)
+**Requirements**: CONN-01, CONN-02, CONN-03
+**Success Criteria** (what must be TRUE):
+  1. Status page shows a "Server B Connectivity" section that displays "Reachable" with response time in ms when SERVER_B_URL is set and the Server B /health endpoint responds
+  2. Status page shows "Unreachable" with an error indicator when SERVER_B_URL is set but Server B /health endpoint does not respond (any error — timeout, DNS failure, non-200)
+  3. Status page shows "Not configured" in neutral styling (no warning color, no error indicator) when SERVER_B_URL env var is absent
+  4. CLONE.md env var table includes SERVER_B_URL listed as optional, with a note explaining it enables the status page connectivity check
+  5. .env.example includes SERVER_B_URL with a comment marking it optional and explaining its purpose
+**Plans**: TBD
+
+#### Phase 4: Resolve Curl Snippet
+**Goal**: Server B developers can copy a ready-made curl command from the worker's status page and immediately test the /resolve endpoint without constructing the request manually
+**Depends on**: Phase 3 (builds on the status page work)
+**Requirements**: DIAG-01
+**Success Criteria** (what must be TRUE):
+  1. Status page shows a curl snippet for GET /resolve?url=<video_url> that includes the Authorization: Bearer <WORKER_SECRET> header in the correct format
+  2. The curl snippet uses the worker's own domain/URL so the host portion is pre-filled and the command is immediately runnable
+  3. The curl snippet is visible on the status page in all worker states (WORKING, DEGRADED, BINARY ERROR)
+**Plans**: TBD
+
+### Progress
+
+**Execution Order:**
+Phases execute in numeric order: 3 → 4
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 3. Server B Connectivity Check | 0/? | Not started | - |
+| 4. Resolve Curl Snippet | 0/? | Not started | - |
+
+---
+
+## Completed: v1.0 — Worker C Foundation
+
+**Completed:** 2026-02-26
+**Phases:** 2
+
+### Phases (v1.0)
+
+- [x] **Phase 1: Code Rebuild and Stats Hardening** - Rebuild api/resolve.js with correct platform config, honest status page, and in-session diagnostics (completed 2026-02-26)
+- [x] **Phase 2: Documentation Hardening** - Write CLONE.md and rewrite SERVER_B_GUIDE.md so operators can't misconfigure a worker (completed 2026-02-26)
+
+### Phase Details (v1.0)
+
+#### Phase 1: Code Rebuild and Stats Hardening
 **Goal**: The worker is honest — platform config is correct, the status page reflects real resolve outcomes, and operators get actionable diagnostics
 **Depends on**: Nothing (first phase)
 **Requirements**: CONF-01, CONF-02, CONF-03, PAGE-01, PAGE-02, PAGE-03, PAGE-04, PAGE-05, PAGE-06
@@ -33,7 +83,7 @@ Plans:
 - [x] 01-01-PLAN.md — Update vercel.json (fluid + maxDuration:60) and package.json (engines: node 22.x)
 - [x] 01-02-PLAN.md — Rebuild api/resolve.js: in-module state machine, instrumented resolve handler, rewritten status page
 
-### Phase 2: Documentation Hardening
+#### Phase 2: Documentation Hardening
 **Goal**: Any operator who clones the worker and follows CLONE.md ends up with a correctly configured, registered instance — with zero misconfiguration possible if they complete the checklist
 **Depends on**: Phase 1
 **Requirements**: DOC-01, DOC-02, DOC-03, DOC-04, DOC-05, DOC-06, DOC-07
@@ -46,14 +96,11 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md — Write CLONE.md: operator deployment checklist (clone, deploy, env vars, verify)
-- [ ] 02-02-PLAN.md — Rewrite SERVER_B_GUIDE.md as numbered checklist at repo root + update .env.example
+- [x] 02-02-PLAN.md — Rewrite SERVER_B_GUIDE.md as numbered checklist at repo root + update .env.example
 
-## Progress
-
-**Execution Order:**
-Phases execute in numeric order: 1 → 2
+### Progress (v1.0)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Code Rebuild and Stats Hardening | 2/2 | Complete | 2026-02-26 |
-| 2. Documentation Hardening | 2/2 | Complete   | 2026-02-26 |
+| 2. Documentation Hardening | 2/2 | Complete | 2026-02-26 |
