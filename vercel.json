@@ -1,11 +1,12 @@
 {
   "version": 2,
+  "fluid": true,
   "functions": {
     "api/*.js": {
-      "maxDuration": 20
+      "maxDuration": 60
     }
   },
   "rewrites": [
-    { "source": "/", "destination": "api/resolve" }
+    { "source": "/(.*)", "destination": "/api/resolve" }
   ]
 }

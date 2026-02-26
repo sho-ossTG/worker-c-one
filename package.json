@@ -1,7 +1,10 @@
 {
-  "name": "server-b-jipi",
+  "name": "worker-c",
   "version": "1.0.0",
   "private": true,
   "type": "commonjs",
+  "engines": {
+    "node": "22.x"
+  },
   "dependencies": {}
 }
