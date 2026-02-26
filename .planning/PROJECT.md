@@ -8,29 +8,39 @@ A stateless yt-dlp worker deployed on Vercel. It receives a video URL, runs the 
 
 Any worker instance must resolve a video URL reliably and report its own health clearly — everything else supports that.
 
+## Current Milestone: v1.1 — Diagnostics and Connectivity
+
+**Goal:** Operators can verify Server B is reachable from a worker instance, and Server B developers have a ready-made curl snippet to test /resolve.
+
+**Target features:**
+- Status page Server B connectivity check (pings SERVER_B_URL, shows reachable/unreachable/not configured)
+- Status page curl snippet for /resolve with correct auth header format
+
 ## Requirements
 
 ### Validated
 
-<!-- What the current code already does. -->
+<!-- What shipped and was confirmed valuable. -->
 
-- ✓ GET /resolve?url=X runs yt-dlp and returns a direct stream URL — existing
-- ✓ Bearer token auth via WORKER_SECRET env var — existing
-- ✓ GET /health returns JSON status (HTTP 200 ok / 503 error) — existing
-- ✓ GET / returns an HTML status page with a self-test result — existing
-- ✓ WORKER_ID included in every response — existing
-- ✓ Error detail returned when yt-dlp fails — existing
+- ✓ GET /resolve?url=X runs yt-dlp and returns a direct stream URL — v1.0
+- ✓ Bearer token auth via WORKER_SECRET env var — v1.0
+- ✓ GET /health returns JSON status (HTTP 200 ok / 503 error) — v1.0
+- ✓ GET / returns HTML status page — v1.0
+- ✓ WORKER_ID included in every response — v1.0
+- ✓ Error detail returned when yt-dlp fails — v1.0
+- ✓ Status page: WORKING/DEGRADED/BINARY ERROR headline driven by real resolve outcomes — v1.0
+- ✓ Status page: session stats (requests, errors, avg response time, uptime) — v1.0
+- ✓ Status page: recent errors log (last 10, in-memory) — v1.0
+- ✓ Status page: last resolve attempt (timestamp, success/fail, duration) — v1.0
+- ✓ Self-test result cached 30s on /health to avoid binary spawn on every poll — v1.0
+- ✓ CLONE.md operator deployment checklist — v1.0
+- ✓ SERVER_B_GUIDE.md step-by-step integration checklist — v1.0
 
 ### Active
 
-- [ ] Worker C code is rebuilt cleanly so every line is understood and intentional
-- [ ] Status page shows in-session stats: request count, avg response time, last resolve attempt (timestamp + success/fail)
-- [ ] Status page shows recent errors log (last 10, in-memory, resets on cold start)
-- [ ] Status page shows Worker C → Server B connectivity check (Worker C pings SERVER_B_URL)
-- [ ] Status page shows clear WORKING / DEGRADED headline with specific error details
-- [ ] SERVER_B_GUIDE.md rewritten as a step-by-step checklist with exact Vercel env var names and values
-- [ ] SERVER_B_GUIDE.md covers how to add unlimited Worker C instances to B's pool
-- [ ] README or CLONE.md documents exactly how to clone and deploy a new worker instance
+- [ ] Status page shows Server B connectivity section (pings SERVER_B_URL, reachable/unreachable/not-configured)
+- [ ] Status page shows curl snippet for /resolve with Authorization header
+- [ ] .env.example and CLONE.md document SERVER_B_URL env var
 
 ### Out of Scope
 
@@ -42,7 +52,7 @@ Any worker instance must resolve a video URL reliably and report its own health 
 
 ## Context
 
-This is a brownfield project. The existing code in `api/resolve.js` is functional but was modified by AI without the owner's knowledge. The goal is a clean rebuild the owner can read and trust, not a feature overhaul. The yt-dlp binary lives at `bin/dlp-jipi` and works correctly.
+v1.0 delivered a clean worker rebuild with a full status page, operator documentation, and Server B integration guide. The codebase is now intentional and well-understood. v1.1 adds diagnostic features that make it easier for operators to verify the worker is correctly integrated with Server B.
 
 System architecture:
 - Server A → Server B → Worker C-1, C-2, C-3, ...
@@ -63,10 +73,10 @@ The status page connectivity check (Worker C → Server B) requires a `SERVER_B_
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| In-memory stats only | No budget for Redis on workers; session-only is sufficient for diagnostics | — Pending |
-| Worker C pings Server B for connectivity | User wants each worker to verify B is reachable from its end | — Pending |
+| In-memory stats only | No budget for Redis on workers; session-only is sufficient for diagnostics | ✓ Good |
+| Worker C pings Server B for connectivity | User wants each worker to verify B is reachable from its end | ✓ Good |
 | Shared WORKER_SECRET across all workers | Simpler than per-worker secrets; B only needs one value | ✓ Good |
 | Pre-compiled binary, no Python source | Dead weight removed; binary already works | ✓ Good |
 
 ---
-*Last updated: 2026-02-26 after initialization*
+*Last updated: 2026-02-26 after v1.0 completion — started v1.1 milestone*

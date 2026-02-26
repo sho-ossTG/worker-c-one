@@ -3,9 +3,9 @@
 **Defined:** 2026-02-26
 **Core Value:** Any worker instance must resolve a video URL reliably and report its own health clearly
 
-## v1 Requirements
+## v1.0 Requirements (Complete)
 
-Requirements for initial release. Each maps to roadmap phases.
+All shipped in v1.0. See `.planning/MILESTONES.md` for full details.
 
 ### Platform Config
 
@@ -32,18 +32,27 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **DOC-06**: `SERVER_B_GUIDE.md` is structured as a step-by-step checklist, not just code snippets
 - [x] **DOC-07**: `.env.example` documents all required env vars (`WORKER_ID`, `WORKER_SECRET`) with a prominent warning when `WORKER_SECRET` is not set
 
+## v1.1 Requirements
+
+Requirements for v1.1 milestone.
+
+### Connectivity
+
+- [ ] **CONN-01**: Status page shows a Server B connectivity section that pings `SERVER_B_URL/health` on each page load and displays reachable or unreachable with response time in ms
+- [ ] **CONN-02**: When `SERVER_B_URL` is not set, the connectivity section shows "not configured" (neutral display — no error, no warning color)
+- [ ] **CONN-03**: `.env.example` and `CLONE.md` are updated to document the `SERVER_B_URL` env var as optional (worker functions without it; enables connectivity check when set)
+
+### Diagnostics
+
+- [ ] **DIAG-01**: Status page shows a curl snippet for the `/resolve` endpoint with `Authorization: Bearer <WORKER_SECRET>` header and `?url=<video_url>` parameter, using the worker's own URL
+
 ## v2 Requirements
 
 Deferred to future release.
 
-### Connectivity
-
-- **CONN-01**: Status page shows Server B connectivity check — worker pings `SERVER_B_URL/health` on each status page load and shows reachable/unreachable with response time
-
 ### Diagnostics
 
-- **DIAG-01**: Self-test result is cached for 30s so `/health` polls don't spawn a new yt-dlp process on every request
-- **DIAG-02**: Status page shows endpoint listing with curl examples for quick Server B setup
+- **DIAG-02**: Status page shows endpoint listing with curl examples for /health (no-auth variant)
 
 ## Out of Scope
 
@@ -54,12 +63,14 @@ Deferred to future release.
 | Server B implementation | Separate repo/project |
 | Server A implementation | Separate repo/project |
 | Per-worker secrets | Shared WORKER_SECRET is sufficient; all workers are identical clones |
-| Fix binary path to use __dirname | Deferred — current path works in the existing deployment |
+| Self-test cache (DIAG-01 old) | Already implemented in v1.0 — selfTestCache with 30s TTL in api/resolve.js |
 | Multi-worker pool overview on status page | Workers only know about themselves; pool views belong in Server B |
 
 ## Traceability
 
 Which phases cover which requirements. Updated during roadmap creation.
+
+### v1.0 (Complete)
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
@@ -80,11 +91,20 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DOC-06 | Phase 2 | Complete |
 | DOC-07 | Phase 2 | Complete |
 
+### v1.1 (Pending)
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| CONN-01 | TBD | Pending |
+| CONN-02 | TBD | Pending |
+| CONN-03 | TBD | Pending |
+| DIAG-01 | TBD | Pending |
+
 **Coverage:**
-- v1 requirements: 16 total
-- Mapped to phases: 16
-- Unmapped: 0 ✓
+- v1.1 requirements: 4 total
+- Mapped to phases: 0
+- Unmapped: 4 ⚠️
 
 ---
 *Requirements defined: 2026-02-26*
-*Last updated: 2026-02-26 after plan 02-01 completion — DOC-01, DOC-02, DOC-03 marked complete*
+*Last updated: 2026-02-26 — v1.1 requirements added*
