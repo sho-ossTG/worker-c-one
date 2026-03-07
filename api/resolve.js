@@ -3,7 +3,6 @@ const path = require("path");
 
 const BINARY = path.join(process.cwd(), "bin", "dlp-jipi");
 const WORKER_ID = process.env.WORKER_ID || "worker";
-const WORKER_SECRET = process.env.WORKER_SECRET || "";
 
 // ─── Session state (reset on each cold start) ────────────────────────────────
 
@@ -33,12 +32,6 @@ function isHttpUrl(value) {
   } catch {
     return false;
   }
-}
-
-function checkAuth(req) {
-  if (!WORKER_SECRET) return true;
-  const auth = req.headers["authorization"] || "";
-  return auth === `Bearer ${WORKER_SECRET}`;
 }
 
 function escapeHtml(str) {
@@ -133,7 +126,6 @@ function renderStatusPage(test) {
   }
 
   const region = process.env.VERCEL_REGION || "unknown";
-  const authEnabled = !!WORKER_SECRET;
 
   // Session stats
   const uptime = formatUptime(Date.now() - COLD_START);
@@ -227,7 +219,6 @@ function renderStatusPage(test) {
     <div class="row"><span class="label">Binary</span><span class="${test.ok ? "ok" : "err"}">${test.ok ? "✓ found" : "✗ missing"}</span></div>
     <div class="row"><span class="label">yt-dlp version</span><span class="val">${escapeHtml(test.version || "—")}</span></div>
     <div class="row"><span class="label">Self-test</span><span class="${test.ok ? "ok" : "err"}">${test.ok ? "✓ pass" : "✗ fail"}</span></div>
-    <div class="row"><span class="label">Auth</span><span class="${authEnabled ? "ok" : "warn"}">${authEnabled ? "✓ enabled" : "⚠ disabled"}</span></div>
     <div class="row"><span class="label">Resolve endpoint</span><span class="val">GET /resolve?url=…</span></div>
     <div class="row"><span class="label">Health endpoint</span><span class="val">GET /health</span></div>
 
@@ -285,13 +276,6 @@ module.exports = async (req, res) => {
 
   // GET /resolve?url=X  or  GET /?url=X — resolve a video URL
   if (pathname === "/resolve" || pathname === "/") {
-    if (!checkAuth(req)) {
-      res.statusCode = 401;
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify({ error: "Unauthorized", worker_id: WORKER_ID }));
-      return;
-    }
-
     if (req.method !== "GET") {
       res.statusCode = 405;
       res.setHeader("Allow", "GET");
