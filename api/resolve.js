@@ -275,7 +275,7 @@ module.exports = async (req, res) => {
   }
 
   // GET /resolve?url=X  or  GET /?url=X — resolve a video URL
-  if (pathname === "/resolve" || pathname === "/") {
+  if (pathname === "/resolve" || pathname === "/api/resolve" || pathname === "/") {
     if (req.method !== "GET") {
       res.statusCode = 405;
       res.setHeader("Allow", "GET");
