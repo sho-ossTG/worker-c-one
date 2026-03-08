@@ -72,8 +72,12 @@ function runYtDlp(inputUrl) {
 function runSelfTest() {
   return new Promise((resolve) => {
     execFile(BINARY, ["--version"], { timeout: 5000 }, (err, stdout) => {
-      if (err) resolve({ ok: false, error: String(err.message || err).trim() });
-      else resolve({ ok: true, version: stdout.trim() });
+      if (err) {
+        console.error('[worker-c] self-test failed:', err?.message || err);
+        resolve({ ok: false, error: String(err.message || err).trim() });
+      } else {
+        resolve({ ok: true, version: stdout.trim() });
+      }
     });
   });
 }
@@ -277,6 +281,7 @@ module.exports = async (req, res) => {
   // GET /resolve?url=X  or  GET /?url=X — resolve a video URL
   if (pathname === "/resolve" || pathname === "/api/resolve" || pathname === "/") {
     if (req.method !== "GET") {
+      console.error('[worker-c] method_not_allowed:', req.method);
       res.statusCode = 405;
       res.setHeader("Allow", "GET");
       res.end("Method Not Allowed");
@@ -284,6 +289,7 @@ module.exports = async (req, res) => {
     }
 
     if (!inputUrl) {
+      console.error('[worker-c] missing_url_param');
       res.statusCode = 400;
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify({ error: "Missing url parameter", worker_id: WORKER_ID }));
@@ -291,6 +297,7 @@ module.exports = async (req, res) => {
     }
 
     if (!isHttpUrl(inputUrl)) {
+      console.error('[worker-c] invalid_url:', inputUrl);
       res.statusCode = 400;
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify({ error: "Invalid url; expected http(s) URL", worker_id: WORKER_ID }));
@@ -320,6 +327,7 @@ module.exports = async (req, res) => {
         resolveErrors.push({ timestamp: new Date().toISOString(), url: String(inputUrl).slice(0, 60), error: errText });
         if (resolveErrors.length > 10) resolveErrors.shift();
 
+        console.error('[worker-c] yt-dlp empty url for:', inputUrl);
         res.statusCode = 502;
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify({ error: "yt-dlp returned empty or invalid url", worker_id: WORKER_ID }));
@@ -345,6 +353,7 @@ module.exports = async (req, res) => {
       });
       if (resolveErrors.length > 10) resolveErrors.shift();
 
+      console.error('[worker-c] yt-dlp error for:', inputUrl, '|', errText);
       res.statusCode = 500;
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify({
@@ -357,6 +366,7 @@ module.exports = async (req, res) => {
   }
 
   // 404
+  console.error('[worker-c] 404:', pathname);
   res.statusCode = 404;
   res.setHeader("Content-Type", "application/json");
   res.end(JSON.stringify({ error: "Not found", worker_id: WORKER_ID }));
