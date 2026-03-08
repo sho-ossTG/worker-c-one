@@ -1,3 +1,5 @@
+const { getResolveRuntimeStats } = require("./resolve");
+
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, "&amp;")
@@ -17,7 +19,7 @@ function maskUrl(url) {
 
 async function checkServerB(serverBUrl) {
   if (!serverBUrl) {
-    return { ok: false, error: "SERVER_B_URL not configured" };
+    return { ok: false, warning: true, error: "SERVER_B_URL not set" };
   }
 
   const controller = new AbortController();
@@ -49,8 +51,12 @@ async function checkServerB(serverBUrl) {
 }
 
 function renderPage(state) {
-  const color = state.checkResult == null ? "#888888" : (state.checkResult.ok ? "#00ff5a" : "#ff4444");
-  const label = state.checkResult == null ? "IDLE" : (state.checkResult.ok ? "ONLINE" : "DEGRADED");
+  const color = state.checkResult == null
+    ? "#888888"
+    : (state.checkResult.warning ? "#ff8800" : (state.checkResult.ok ? "#00ff5a" : "#ff4444"));
+  const label = state.checkResult == null
+    ? "IDLE"
+    : (state.checkResult.warning ? "NOT CONFIGURED" : (state.checkResult.ok ? "ONLINE" : "DEGRADED"));
 
   const checkValue = state.checkResult == null
     ? "Press Check to run"
@@ -58,7 +64,14 @@ function renderPage(state) {
       ? `ok (${state.checkResult.ms}ms)`
       : `${escapeHtml(state.checkResult.error || "error")} (${state.checkResult.ms || 0}ms)`);
 
-  const checkClass = state.checkResult == null ? "warn" : (state.checkResult.ok ? "ok" : "err");
+  const checkClass = state.checkResult == null
+    ? "warn"
+    : (state.checkResult.warning ? "warn" : (state.checkResult.ok ? "ok" : "err"));
+
+  const runtime = state.runtimeStats || {};
+  const lastResolveText = runtime.lastResolve
+    ? `${runtime.lastResolve.ok ? "success" : "failed"} @ ${runtime.lastResolve.timestamp}`
+    : "-";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -106,10 +119,10 @@ function renderPage(state) {
     <div class="row"><span class="label">Server B /api/health</span><span class="${checkClass}">${checkValue}</span></div>
 
     <div class="section-header">Runtime Stats</div>
-    <div class="row"><span class="label">totalRequests</span><span class="val">0</span></div>
-    <div class="row"><span class="label">errorCount</span><span class="val">0</span></div>
-    <div class="row"><span class="label">resolveState</span><span class="val">idle</span></div>
-    <div class="row"><span class="label">lastResolve</span><span class="val">-</span></div>
+    <div class="row"><span class="label">totalRequests</span><span class="val">${Number(runtime.totalRequests || 0)}</span></div>
+    <div class="row"><span class="label">errorCount</span><span class="val">${Number(runtime.errorCount || 0)}</span></div>
+    <div class="row"><span class="label">resolveState</span><span class="val">${escapeHtml(String(runtime.resolveState || "idle"))}</span></div>
+    <div class="row"><span class="label">lastResolve</span><span class="val">${escapeHtml(lastResolveText)}</span></div>
 
     <div class="section-header">Connections</div>
     <div class="row"><span class="label">SERVER_B_URL</span><span class="${state.serverBUrl ? "ok" : "warn"}">${state.serverBUrl ? escapeHtml(maskUrl(state.serverBUrl)) : "not set"}</span></div>
@@ -122,8 +135,9 @@ module.exports = async (req, res) => {
   const serverBUrl = String(process.env.SERVER_B_URL || "").trim();
   const runCheck = String(req.method || "GET").toUpperCase() === "POST";
   const checkResult = runCheck ? await checkServerB(serverBUrl) : null;
+  const runtimeStats = getResolveRuntimeStats();
 
   res.statusCode = 200;
   res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.end(renderPage({ serverBUrl, checkResult }));
+  res.end(renderPage({ serverBUrl, checkResult, runtimeStats }));
 };

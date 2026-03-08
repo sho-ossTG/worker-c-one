@@ -111,6 +111,15 @@ function formatUptime(ms) {
   return `${s}s since cold start`;
 }
 
+function getResolveRuntimeStats() {
+  return {
+    totalRequests,
+    errorCount,
+    resolveState,
+    lastResolve
+  };
+}
+
 // ─── Status page (human-readable) ───────────────────────────────────────────
 
 function renderStatusPage(test) {
@@ -259,7 +268,7 @@ function renderStatusPage(test) {
 
 // ─── Request handler ─────────────────────────────────────────────────────────
 
-module.exports = async (req, res) => {
+async function handler(req, res) {
   const reqUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const pathname = reqUrl.pathname;
   const inputUrl = String(reqUrl.searchParams.get("url") || "").trim();
@@ -437,4 +446,7 @@ module.exports = async (req, res) => {
   res.statusCode = 404;
   res.setHeader("Content-Type", "application/json");
   res.end(JSON.stringify({ error: "Not found", worker_id: WORKER_ID }));
-};
+}
+
+module.exports = handler;
+module.exports.getResolveRuntimeStats = getResolveRuntimeStats;
