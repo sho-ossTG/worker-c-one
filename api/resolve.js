@@ -284,7 +284,10 @@ module.exports = async (req, res) => {
   if (pathname === "/resolve" || pathname === "/api/resolve" || pathname === "/") {
     if (req.method !== "GET") {
       console.error(JSON.stringify({
+        message: `Server C rejected the resolve request because method ${String(req.method || "unknown")} is not allowed; only GET is supported.`,
+        server: "C",
         correlationId,
+        ts: new Date().toISOString(),
         event: "method_not_allowed",
         detail: String(req.method || "unknown"),
         worker_id: WORKER_ID,
@@ -304,7 +307,10 @@ module.exports = async (req, res) => {
 
     if (!inputUrl) {
       console.error(JSON.stringify({
+        message: "Server C could not resolve the stream because the required url query parameter was missing.",
+        server: "C",
         correlationId,
+        ts: new Date().toISOString(),
         event: "missing_url_param",
         detail: "Missing url parameter",
         worker_id: WORKER_ID,
@@ -317,7 +323,10 @@ module.exports = async (req, res) => {
 
     if (!isHttpUrl(inputUrl)) {
       console.error(JSON.stringify({
+        message: `Server C rejected the resolve request because the provided URL is not a valid http(s) address: ${inputUrl.slice(0, 120)}.`,
+        server: "C",
         correlationId,
+        ts: new Date().toISOString(),
         event: "invalid_url",
         detail: inputUrl.slice(0, 120),
         worker_id: WORKER_ID,
@@ -352,7 +361,10 @@ module.exports = async (req, res) => {
         if (resolveErrors.length > 10) resolveErrors.shift();
 
         console.error(JSON.stringify({
+          message: `Server C could not produce a playable stream URL because yt-dlp returned an empty or invalid URL for input ${inputUrl.slice(0, 120)}.`,
+          server: "C",
           correlationId,
+          ts: new Date().toISOString(),
           event: "yt_dlp_empty_url",
           detail: inputUrl.slice(0, 120),
           worker_id: WORKER_ID,
@@ -383,7 +395,10 @@ module.exports = async (req, res) => {
       if (resolveErrors.length > 10) resolveErrors.shift();
 
       console.error(JSON.stringify({
+        message: `Server C failed to resolve the stream because yt-dlp returned an execution error for input ${inputUrl.slice(0, 120)}: ${errText.slice(0, 200)}.`,
+        server: "C",
         correlationId,
+        ts: new Date().toISOString(),
         event: "yt_dlp_failed",
         detail: `${inputUrl.slice(0, 120)} | ${errText.slice(0, 300)}`,
         worker_id: WORKER_ID,
