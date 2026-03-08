@@ -1,4 +1,5 @@
 const { execFile } = require("child_process");
+const { randomUUID } = require("crypto");
 const path = require("path");
 
 const BINARY = path.join(process.cwd(), "bin", "dlp-jipi");
@@ -252,6 +253,7 @@ module.exports = async (req, res) => {
   const reqUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const pathname = reqUrl.pathname;
   const inputUrl = String(reqUrl.searchParams.get("url") || "").trim();
+  const correlationId = String(req.headers["x-correlation-id"] || "").trim() || randomUUID();
 
   // GET /health — JSON status for Server B to poll
   if (pathname === "/health") {
@@ -287,6 +289,13 @@ module.exports = async (req, res) => {
       res.end("Method Not Allowed");
       return;
     }
+
+    console.log(JSON.stringify({
+      correlationId,
+      event: "request_received",
+      worker_id: WORKER_ID,
+      url: inputUrl.slice(0, 80),
+    }));
 
     if (!inputUrl) {
       console.error('[worker-c] missing_url_param');
