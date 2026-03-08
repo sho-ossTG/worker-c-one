@@ -30,6 +30,7 @@ Go to **Settings → Environment Variables** and add the following:
 | Variable | Example value | Required | What breaks if missing |
 |---|---|---|---|
 | `WORKER_ID` | `worker-c1` | Yes | All responses report `worker_id: "worker"` — Server B cannot distinguish workers |
+| `SERVER_B_URL` | `https://your-server-b.vercel.app` | Yes (for status visibility) | Worker status page cannot run B connectivity checks and shows `SERVER_B_URL not set` warning |
 | `WORKER_SECRET` | `abc123-long-random-string` | Recommended | `/resolve` endpoint accepts requests without authentication |
 
 > **⚠ Required for security:** Without this, anyone who knows your worker URL can use it. Set this before sharing the URL with Server B.
@@ -72,6 +73,11 @@ If the header shows BINARY ERROR or DEGRADED, check the error text on the status
 
 - **Symptom:** yt-dlp calls return a timeout error after about 10 seconds, even though `vercel.json` sets `maxDuration: 60`.
 - **Fix:** Go to the Vercel project dashboard → **Settings → Functions** → enable Fluid Compute. The setting in `vercel.json` alone is not enough; the dashboard toggle must also be on.
+
+**Mistake: SERVER_B_URL not set**
+
+- **Symptom:** Worker status page shows `SERVER_B_URL not set` warning and does not run B `/api/health` connectivity checks.
+- **Fix:** Add `SERVER_B_URL` to **Settings → Environment Variables** using your Server B deployment URL (for example `https://your-server-b.vercel.app`) and redeploy.
 
 ---
 
