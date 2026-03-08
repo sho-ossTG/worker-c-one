@@ -74,8 +74,18 @@ function runSelfTest() {
   return new Promise((resolve) => {
     execFile(BINARY, ["--version"], { timeout: 5000 }, (err, stdout) => {
       if (err) {
-        console.error('[worker-c] self-test failed:', err?.message || err);
-        resolve({ ok: false, error: String(err.message || err).trim() });
+        const selfTestError = String(err?.message || err).trim();
+        const selfTestCorrelationId = randomUUID();
+        console.error(JSON.stringify({
+          message: `Server C self-test failed because the yt-dlp binary could not return its version output: ${selfTestError.slice(0, 300)}.`,
+          server: "C",
+          correlationId: selfTestCorrelationId,
+          ts: new Date().toISOString(),
+          event: "self_test_failed",
+          detail: selfTestError.slice(0, 300),
+          worker_id: WORKER_ID,
+        }));
+        resolve({ ok: false, error: selfTestError });
       } else {
         resolve({ ok: true, version: stdout.trim() });
       }
@@ -415,7 +425,15 @@ module.exports = async (req, res) => {
   }
 
   // 404
-  console.error('[worker-c] 404:', pathname);
+  console.error(JSON.stringify({
+    message: `Server C received a request for an unknown path and returned 404 Not Found: ${pathname}.`,
+    server: "C",
+    correlationId,
+    ts: new Date().toISOString(),
+    event: "route_not_found",
+    path: pathname,
+    worker_id: WORKER_ID,
+  }));
   res.statusCode = 404;
   res.setHeader("Content-Type", "application/json");
   res.end(JSON.stringify({ error: "Not found", worker_id: WORKER_ID }));
