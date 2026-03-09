@@ -34,6 +34,7 @@ C canonical template: this file (`worker-c-one/docs/SERVER-TEMPLATE.md`) is the 
 - ✅ Functional - structured JSON logs including correlation ID and event names
 - 🚧 Non-functional (stub) - strict bearer enforcement on resolve ingress; insert behind `const STUB_ENABLED = false` in `api/resolve.js`
 - 🚧 Non-functional (stub) - richer worker metrics export endpoint; insert behind `const STUB_ENABLED = false` in `api/resolve.js`
+- 🚧 Non-functional (stub) - STUB-K-01 curl snippet helper for `/api/resolve`; insert behind `const STUB_ENABLED = false` in `worker-c-one/api/resolve.js` `renderStatusPage()`
 
 ## Cross-server change impact
 
