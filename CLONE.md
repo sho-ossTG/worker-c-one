@@ -53,7 +53,7 @@ If the header shows BINARY ERROR or DEGRADED, check the error text on the status
 |---|---|---|
 | `GET /` | None | HTML status page |
 | `GET /health` | None | JSON `{"status":"ok","worker_id":"...","yt_dlp_version":"..."}` |
-| `GET /resolve?url=X` | `Authorization: Bearer WORKER_SECRET` | JSON `{"url":"...","worker_id":"..."}` on success |
+| `GET /resolve?url=X` | None (current runtime) | JSON `{"url":"...","worker_id":"..."}` on success |
 
 ---
 
@@ -83,4 +83,4 @@ If the header shows BINARY ERROR or DEGRADED, check the error text on the status
 
 ## Adding a Second Worker
 
-Same steps above. Use a new Vercel project with a different project name. Set `WORKER_ID=worker-c2` (or any unique name). Use the same `WORKER_SECRET` as all other workers. Add the new deployment URL to Server B's `WORKER_URLS` environment variable. No code changes required anywhere.
+Same steps above. Use a new Vercel project with a different project name. Set `WORKER_ID=worker-c2` (or any unique name). Use the same `WORKER_SECRET` as all other workers. Add the new deployment URL to Server B as the next indexed worker variable (`SERVER_C2_URL`, `SERVER_C3_URL`, etc.). No code changes required anywhere.
