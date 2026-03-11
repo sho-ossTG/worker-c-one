@@ -166,7 +166,6 @@ function getResolveRuntimeStats() {
 // ─── Status page (human-readable) ───────────────────────────────────────────
 
 function renderStatusPage(test) {
-  const STUB_ENABLED = false;
   const color = test.ok ? "#00ff5a" : "#ff8800";
   const label = test.ok ? "ONLINE" : "BINARY ERROR";
 
@@ -189,15 +188,13 @@ function renderStatusPage(test) {
   const baseUrl = primaryHost ? `https://${primaryHost}` : "https://example-worker-c.vercel.app";
   const sampleInputUrl = "https://example.com/sample-video.mp4";
   const curlSnippet = `curl -G --data-urlencode \"url=${sampleInputUrl}\" \"${baseUrl}/resolve\"`;
-  const curlSnippetHtml = STUB_ENABLED
-    ? `
+  const curlSnippetHtml = `
     <div class="section-header">Resolve Quick Check</div>
     <div class="row"><span class="label">Command</span><span class="val">curl /resolve</span></div>
     <div class="error-box" style="background:#060b12;border-color:#3a6ea530;">
       <div class="error-label" style="color:#8dbdff;">COPYABLE CURL SNIPPET</div>
       <div class="error-text" style="color:#b8d4ff;">${escapeHtml(curlSnippet)}</div>
-    </div>`
-    : "";
+    </div>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
