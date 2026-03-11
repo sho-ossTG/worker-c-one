@@ -257,7 +257,7 @@ function renderStatusPage(test) {
 
     <div class="section-header">Connections</div>
     <div class="row"><span class="label">SERVER_B_URL</span><span class="${serverBUrl ? "ok" : "warn"}">${serverBUrl ? escapeHtml(maskUrl(serverBUrl)) : "not set"}</span></div>
-    <div class="row"><span class="label">Resolve endpoint</span><span class="val">GET /resolve?url=...</span></div>
+    <div class="row"><span class="label">Resolve endpoint</span><span class="val">GET /api/resolve?url=...</span></div>
     <div class="row"><span class="label">Health endpoint</span><span class="val">GET /health</span></div>
 
     ${curlSnippetHtml}
