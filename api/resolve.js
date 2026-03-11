@@ -167,76 +167,23 @@ function getResolveRuntimeStats() {
 
 function renderStatusPage(test) {
   const STUB_ENABLED = false;
-
-  // Derive composite headline state
-  let headlineState;
-  let color;
-  let label;
-  let dotBlink = false;
-
-  if (!test.ok) {
-    headlineState = "binary_error";
-    color = "#ff8800";
-    label = "BINARY ERROR";
-  } else if (resolveState === "working") {
-    headlineState = "working";
-    color = "#00ff5a";
-    label = "WORKING";
-    dotBlink = true;
-  } else if (resolveState === "degraded") {
-    headlineState = "degraded";
-    color = "#ff4444";
-    label = "DEGRADED";
-  } else {
-    // idle
-    headlineState = "idle";
-    color = "#888888";
-    label = "IDLE";
-  }
+  const color = test.ok ? "#00ff5a" : "#ff8800";
+  const label = test.ok ? "ONLINE" : "BINARY ERROR";
 
   const region = process.env.VERCEL_REGION || "unknown";
+  const serverBUrl = String(process.env.SERVER_B_URL || "").trim();
 
-  // Session stats
+  // Runtime stats
   const uptime = formatUptime(Date.now() - COLD_START);
   const avgMs = totalRequests > 0 ? Math.round(totalDurationMs / totalRequests) : null;
+  const lastResolveText = lastResolve
+    ? `${lastResolve.ok ? "success" : "failed"} @ ${lastResolve.timestamp}`
+    : "-";
 
-  // Last resolve row
-  let lastResolveHtml;
-  if (!lastResolve) {
-    lastResolveHtml = `<span style="color:#555">no resolves yet</span>`;
-  } else if (lastResolve.ok) {
-    lastResolveHtml = `<span class="ok">success · ${lastResolve.durationMs}ms · ${escapeHtml(lastResolve.timestamp)}</span>`;
-  } else {
-    lastResolveHtml = `<span class="err">failed · ${lastResolve.durationMs}ms · ${escapeHtml(lastResolve.timestamp)}</span>`;
-  }
-
-  // Recent errors (newest first)
-  const errorsReversed = resolveErrors.slice().reverse();
-  const errorEntriesHtml = errorsReversed.map(e => {
-    const urlDisplay = e.url.length >= 60 ? escapeHtml(e.url) + "…" : escapeHtml(e.url);
-    const errDisplay = e.error.length >= 300 ? escapeHtml(e.error) + "…" : escapeHtml(e.error);
-    return `<div class="error-entry">
-      <span class="err-time">${escapeHtml(e.timestamp)}</span>
-      <span class="err-url">${urlDisplay}</span>
-      <span class="err-msg">${errDisplay}</span>
-    </div>`;
-  }).join("");
-
-  // Error box below card
-  let errorBoxHtml = "";
-  if (headlineState === "binary_error" && test.error) {
-    errorBoxHtml = `
-    <div class="error-box">
-      <div class="error-label">BINARY ERROR</div>
-      <div class="error-text">${escapeHtml(test.error)}</div>
-    </div>`;
-  } else if (headlineState === "degraded" && lastResolveError) {
-    errorBoxHtml = `
-    <div class="error-box">
-      <div class="error-label">LAST RESOLVE ERROR</div>
-      <div class="error-text">${escapeHtml(lastResolveError)}</div>
-    </div>`;
-  }
+  const ytDlpValue = test.ok
+    ? `ok (${escapeHtml(test.version || "unknown")})`
+    : `✗ ${escapeHtml(String(test.error || "binary check failed").slice(0, 200))}`;
+  const ytDlpClass = test.ok ? "ok" : "err";
 
   const primaryHost = String(process.env.VERCEL_URL || "").trim();
   const baseUrl = primaryHost ? `https://${primaryHost}` : "https://example-worker-c.vercel.app";
@@ -261,30 +208,27 @@ function renderStatusPage(test) {
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #0a0a0a; color: #ccc; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-    .card { border: 1px solid ${color}44; padding: 32px; border-radius: 12px; box-shadow: 0 0 30px ${color}12; max-width: 480px; width: 100%; }
+    .card { border: 1px solid ${color}44; padding: 32px; border-radius: 12px; box-shadow: 0 0 30px ${color}12; max-width: 560px; width: 100%; }
     .header { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
-    .dot { width: 12px; height: 12px; border-radius: 50%; background: ${color}; box-shadow: 0 0 10px ${color}; flex-shrink: 0; ${dotBlink ? "animation: blink 2s infinite;" : ""} }
-    @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .dot { width: 12px; height: 12px; border-radius: 50%; background: ${color}; box-shadow: 0 0 10px ${color}; flex-shrink: 0; }
     .title { font-size: 1.15rem; color: ${color}; letter-spacing: 1px; font-weight: bold; }
     .subtitle { font-size: 0.75rem; color: #444; margin-top: 3px; }
-    .row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid #141414; font-size: 0.85rem; }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #141414; font-size: 0.85rem; }
     .row:last-child { border-bottom: none; }
     .label { color: #555; }
     .val { color: #ddd; }
     .ok { color: #00ff5a; }
     .warn { color: #ffaa00; }
-    .err { color: #ff4444; }
+    .err { color: #ff4444; text-align: right; max-width: 300px; word-break: break-all; }
+    .pending { color: #ffaa00; }
     .error-box { margin-top: 20px; background: #120000; border: 1px solid #ff444430; border-radius: 8px; padding: 14px; }
     .error-label { color: #ff4444; font-size: 0.78rem; font-weight: bold; margin-bottom: 8px; }
     .error-text { font-size: 0.78rem; color: #ff8888; line-height: 1.6; word-break: break-all; white-space: pre-wrap; }
     .section-header { color: #444; font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase; padding: 14px 0 6px; border-bottom: 1px solid #1a1a1a; }
-    .error-log { margin-top: 4px; }
-    .error-entry { border-bottom: 1px solid #141414; padding: 8px 0; font-size: 0.78rem; }
-    .err-time { color: #555; display: block; }
-    .err-url { color: #888; display: block; word-break: break-all; }
-    .err-msg { color: #ff8888; display: block; word-break: break-all; white-space: pre-wrap; }
-    details summary { cursor: pointer; color: #555; font-size: 0.85rem; padding: 9px 0; }
-    details summary:hover { color: #888; }
+    .actions { margin-top: 12px; margin-bottom: 8px; }
+    button { background: #111; color: #ddd; border: 1px solid #2a2a2a; border-radius: 8px; padding: 8px 14px; font-family: inherit; font-size: 0.82rem; cursor: pointer; }
+    button:hover { border-color: #444; color: #fff; }
+    button:disabled { opacity: 0.75; cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -292,36 +236,72 @@ function renderStatusPage(test) {
     <div class="header">
       <div class="dot"></div>
       <div>
-        <div class="title">${escapeHtml(WORKER_ID.toUpperCase())} — ${label}</div>
-        <div class="subtitle">yt-dlp worker · Vercel Serverless</div>
+        <div class="title">SERVER C — ${label}</div>
+        <div class="subtitle">yt-dlp worker · Vercel Serverless · ${escapeHtml(WORKER_ID)}</div>
       </div>
     </div>
 
+    <div class="section-header">Health Checks</div>
+    <div class="row"><span class="label">yt-dlp binary</span><span class="${ytDlpClass}">${ytDlpValue}</span></div>
+    <div class="row"><span class="label">Server B /api/health</span><span id="server-b-check" class="warn">Press Check to run</span></div>
+    <div class="actions">
+      <button id="check-server-b" type="button">Check</button>
+    </div>
+
+    <div class="section-header">Runtime Stats</div>
     <div class="row"><span class="label">Worker ID</span><span class="val">${escapeHtml(WORKER_ID)}</span></div>
     <div class="row"><span class="label">Region</span><span class="val">${escapeHtml(region)}</span></div>
-    <div class="row"><span class="label">Binary</span><span class="${test.ok ? "ok" : "err"}">${test.ok ? "✓ found" : "✗ missing"}</span></div>
-    <div class="row"><span class="label">yt-dlp version</span><span class="val">${escapeHtml(test.version || "—")}</span></div>
-    <div class="row"><span class="label">Self-test</span><span class="${test.ok ? "ok" : "err"}">${test.ok ? "✓ pass" : "✗ fail"}</span></div>
-    <div class="row"><span class="label">Resolve endpoint</span><span class="val">GET /resolve?url=…</span></div>
+    <div class="row"><span class="label">Uptime</span><span class="val">${escapeHtml(uptime)}</span></div>
+    <div class="row"><span class="label">totalRequests</span><span class="val">${totalRequests}</span></div>
+    <div class="row"><span class="label">errorCount</span><span class="val">${errorCount}</span></div>
+    <div class="row"><span class="label">resolveState</span><span class="val">${escapeHtml(resolveState)}</span></div>
+    <div class="row"><span class="label">avgResponseMs</span><span class="val">${avgMs !== null ? `${avgMs} ms` : "-"}</span></div>
+    <div class="row"><span class="label">lastResolve</span><span class="val">${escapeHtml(lastResolveText)}</span></div>
+
+    <div class="section-header">Connections</div>
+    <div class="row"><span class="label">SERVER_B_URL</span><span class="${serverBUrl ? "ok" : "warn"}">${serverBUrl ? escapeHtml(maskUrl(serverBUrl)) : "not set"}</span></div>
+    <div class="row"><span class="label">Resolve endpoint</span><span class="val">GET /resolve?url=...</span></div>
     <div class="row"><span class="label">Health endpoint</span><span class="val">GET /health</span></div>
 
-    <div class="section-header">Session Stats</div>
-    <div class="row"><span class="label">Uptime</span><span class="val">${escapeHtml(uptime)}</span></div>
-    <div class="row"><span class="label">Total requests</span><span class="val">${totalRequests} — this instance, since last cold start</span></div>
-    <div class="row"><span class="label">Errors</span><span class="${errorCount > 0 ? "err" : "val" }">${errorCount}</span></div>
-    <div class="row"><span class="label">Avg response time</span><span class="val">${avgMs !== null ? avgMs + " ms" : "—"}</span></div>
-    <div class="row"><span class="label">Last Resolve</span><span class="val">${lastResolveHtml}</span></div>
-
-    <details>
-      <summary>Recent errors: ${resolveErrors.length}</summary>
-      <div class="error-log">
-        ${errorEntriesHtml}
-      </div>
-    </details>
-
-    ${errorBoxHtml}
     ${curlSnippetHtml}
   </div>
+  <script>
+    (function () {
+      var button = document.getElementById("check-server-b");
+      var output = document.getElementById("server-b-check");
+      if (!button || !output) return;
+
+      button.addEventListener("click", async function () {
+        var idleText = button.textContent;
+        button.disabled = true;
+        button.textContent = "Checking...";
+        output.className = "pending";
+        output.textContent = "○ checking...";
+
+        try {
+          var response = await fetch("/?check=1", {
+            method: "GET",
+            headers: { "Accept": "application/json" }
+          });
+          var payload = await response.json().catch(function () { return {}; });
+          if (payload && payload.ok) {
+            output.className = "ok";
+            output.textContent = "✓ up (" + String(payload.ms || 0) + "ms)";
+          } else {
+            var reason = String((payload && payload.error) || ("status " + response.status)).slice(0, 200);
+            output.className = "err";
+            output.textContent = "✗ " + reason;
+          }
+        } catch (error) {
+          output.className = "err";
+          output.textContent = "✗ " + String(error && error.message ? error.message : error).slice(0, 200);
+        } finally {
+          button.disabled = false;
+          button.textContent = idleText || "Check";
+        }
+      });
+    })();
+  </script>
 </body>
 </html>`;
 }
