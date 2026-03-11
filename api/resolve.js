@@ -42,6 +42,49 @@ function escapeHtml(str) {
     .replace(/>/g, "&gt;");
 }
 
+function maskUrl(url) {
+  if (!url) return "-";
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname;
+  } catch {
+    return String(url).slice(0, 30) + "...";
+  }
+}
+
+async function checkServerB(serverBUrl) {
+  if (!serverBUrl) {
+    return { ok: false, ms: 0, error: "SERVER_B_URL not set" };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  const startedAt = Date.now();
+  try {
+    const healthUrl = new URL("/api/health", serverBUrl).toString();
+    const response = await fetch(healthUrl, { method: "GET", signal: controller.signal });
+    if (!response.ok) {
+      return {
+        ok: false,
+        ms: Date.now() - startedAt,
+        error: `status ${response.status}`
+      };
+    }
+    return { ok: true, ms: Date.now() - startedAt };
+  } catch (e) {
+    if (e && e.name === "AbortError") {
+      return { ok: false, ms: Date.now() - startedAt, error: "health timeout after 5000ms" };
+    }
+    return {
+      ok: false,
+      ms: Date.now() - startedAt,
+      error: String(e && e.message ? e.message : e).slice(0, 200)
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 // ─── Core functions ──────────────────────────────────────────────────────────
 
 function runYtDlp(inputUrl) {
@@ -289,6 +332,7 @@ async function handler(req, res) {
   const reqUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const pathname = reqUrl.pathname;
   const inputUrl = String(reqUrl.searchParams.get("url") || "").trim();
+  const runServerBCheck = pathname === "/" && reqUrl.searchParams.get("check") === "1";
   const correlationId = String(req.headers["x-correlation-id"] || "").trim() || randomUUID();
 
   // GET /health — JSON status for Server B to poll
@@ -304,6 +348,15 @@ async function handler(req, res) {
       region: process.env.VERCEL_REGION || null,
       timestamp: new Date().toISOString(),
     }));
+    return;
+  }
+
+  if (runServerBCheck && req.method === "GET") {
+    const serverBUrl = String(process.env.SERVER_B_URL || "").trim();
+    const checkResult = await checkServerB(serverBUrl);
+    res.statusCode = checkResult.ok ? 200 : 503;
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify(checkResult));
     return;
   }
 
