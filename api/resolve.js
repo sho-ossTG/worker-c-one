@@ -187,10 +187,10 @@ function renderStatusPage(test) {
   const primaryHost = String(process.env.VERCEL_URL || "").trim();
   const baseUrl = primaryHost ? `https://${primaryHost}` : "https://example-worker-c.vercel.app";
   const sampleInputUrl = "https://example.com/sample-video.mp4";
-  const curlSnippet = `curl -G --data-urlencode \"url=${sampleInputUrl}\" \"${baseUrl}/resolve\"`;
+  const curlSnippet = `curl -G --data-urlencode \"url=${sampleInputUrl}\" \"${baseUrl}/api/resolve\"`;
   const curlSnippetHtml = `
     <div class="section-header">Resolve Quick Check</div>
-    <div class="row"><span class="label">Command</span><span class="val">curl /resolve</span></div>
+    <div class="row"><span class="label">Command</span><span class="val">curl /api/resolve</span></div>
     <div class="error-box" style="background:#060b12;border-color:#3a6ea530;">
       <div class="error-label" style="color:#8dbdff;">COPYABLE CURL SNIPPET</div>
       <div class="error-text" style="color:#b8d4ff;">${escapeHtml(curlSnippet)}</div>
