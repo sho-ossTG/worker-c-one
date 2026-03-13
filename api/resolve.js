@@ -13,6 +13,10 @@ let totalRequests   = 0;
 let errorCount      = 0;
 let totalDurationMs = 0;
 
+let statsHour = null;
+let statsHourRequestBaseline = 0;
+let statsHourErrorBaseline = 0;
+
 let lastResolve     = null;  // { timestamp, ok, durationMs }
 let resolveErrors   = [];    // last 10 failures, oldest first
 
@@ -152,6 +156,32 @@ function formatUptime(ms) {
   if (h > 0) return `${h}h ${m}m ${s}s since cold start`;
   if (m > 0) return `${m}m ${s}s since cold start`;
   return `${s}s since cold start`;
+}
+
+function getCurrentUtcHourIso() {
+  return `${new Date().toISOString().slice(0, 13)}:00:00Z`;
+}
+
+function getCurrentHourStats() {
+  const hour = getCurrentUtcHourIso();
+
+  if (statsHour !== hour) {
+    statsHour = hour;
+    statsHourRequestBaseline = totalRequests;
+    statsHourErrorBaseline = errorCount;
+
+    return {
+      hour,
+      requestCount: 0,
+      errorCount: 0,
+    };
+  }
+
+  return {
+    hour,
+    requestCount: Math.max(0, totalRequests - statsHourRequestBaseline),
+    errorCount: Math.max(0, errorCount - statsHourErrorBaseline),
+  };
 }
 
 function getResolveRuntimeStats() {
@@ -324,6 +354,27 @@ async function handler(req, res) {
       error: test.error || null,
       region: process.env.VERCEL_REGION || null,
       timestamp: new Date().toISOString(),
+    }));
+    return;
+  }
+
+  if (pathname === "/api/stats") {
+    if (req.method !== "GET") {
+      res.statusCode = 405;
+      res.setHeader("Allow", "GET");
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "Method Not Allowed" }));
+      return;
+    }
+
+    const stats = getCurrentHourStats();
+    res.statusCode = 200;
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify({
+      server: "C",
+      hour: stats.hour,
+      request_count: stats.requestCount,
+      error_count: stats.errorCount,
     }));
     return;
   }
