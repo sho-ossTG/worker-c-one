@@ -23,7 +23,7 @@ C canonical template: this file (`worker-c-one/docs/SERVER-TEMPLATE.md`) is the 
 - **Inbound B -> C health:** `GET /health` for worker reachability checks
 - **Headers:** consumes `x-correlation-id` when present and generates UUID fallback for logs when missing
 - **Response contracts:** success `200 { url, worker_id }`; invalid input `400`; execution failure `500`/`502` with JSON error payload
-- **Env vars (runtime):** `WORKER_ID`, `VERCEL_REGION` (platform), optional `WORKER_SECRET` (not enforced in current resolve runtime)
+- **Env vars (runtime):** `WORKER_ID`, `VERCEL_REGION` (platform), `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, optional `WORKER_SECRET` (not enforced in current resolve runtime)
 - **B worker URL convention:** B discovers workers via indexed `SERVER_C1_URL`..`SERVER_C9_URL` contract
 - **Cross-reference:** `.planning/phases/11-architecture-baseline-stubs-repo-cleanup/11-CONTRACT-MATRIX.md` rows `B -> C` and `C -> B`
 

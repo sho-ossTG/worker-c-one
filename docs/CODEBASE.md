@@ -6,6 +6,7 @@ This document complements `worker-c-one/docs/SERVER-TEMPLATE.md` with implementa
 
 - Entrypoints: `api/resolve.js` (primary handler for `/`, `/health`, `/resolve`, `/api/resolve`) and `api/index.js` (status UI with B connectivity check).
 - Binary dependency: `bin/dlp-jipi` is the bundled yt-dlp executable used by `runYtDlp(inputUrl)` and `runSelfTest()`.
+- Telemetry dependency: optional Turso (`@libsql/client`) persists hourly records in `hourly_records` when `TURSO_DATABASE_URL` is set.
 - Note on historical names: references to `index.js` and `resolve.js` in older notes now map to `api/index.js` and `api/resolve.js`.
 
 ## Request Path Flow
@@ -53,6 +54,10 @@ This document complements `worker-c-one/docs/SERVER-TEMPLATE.md` with implementa
 - `getResolveRuntimeStats()`
   - Behavior: exposes mutable in-memory counters/state.
   - Returns: `{ totalRequests, errorCount, resolveState, lastResolve }`.
+- `getHourlyDbClient()` / `incrementHourlyRecord(requestDelta, errorDelta)` / `readCurrentHourStatsFromDb()`
+  - Behavior: lazily initializes Turso client, ensures `hourly_records` table exists, upserts per-request/per-error counters, and serves DB-backed current-hour stats.
+  - Returns: DB client or current-hour `{ hour, requestCount, errorCount }` when Turso is configured.
+  - Side effects/gotchas: if Turso is missing/unreachable, logs structured errors and falls back to in-memory counters for `/api/stats`.
 - `renderStatusPage(test)`
   - Behavior: renders full HTML status document with headline, session stats, recent errors, and optional stubbed curl section.
   - Returns: HTML string.

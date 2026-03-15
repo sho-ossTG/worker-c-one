@@ -4,6 +4,8 @@ const path = require("path");
 
 const BINARY = path.join(process.cwd(), "bin", "dlp-jipi");
 const WORKER_ID = process.env.WORKER_ID || "worker";
+const TURSO_DATABASE_URL = String(process.env.TURSO_DATABASE_URL || "").trim();
+const TURSO_AUTH_TOKEN = String(process.env.TURSO_AUTH_TOKEN || "").trim();
 
 // ─── Session state (reset on each cold start) ────────────────────────────────
 
@@ -27,6 +29,10 @@ let lastResolveError = null;
 // Self-test cache (30s TTL — avoids spawning yt-dlp on every /health poll)
 let selfTestCache  = null;
 let selfTestExpiry = 0;
+
+let hourlyDbClient = null;
+let hourlyDbInitPromise = null;
+let hourlyDbInitErrorLogged = false;
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -162,7 +168,144 @@ function getCurrentUtcHourIso() {
   return `${new Date().toISOString().slice(0, 13)}:00:00Z`;
 }
 
-function getCurrentHourStats() {
+async function getHourlyDbClient() {
+  if (!TURSO_DATABASE_URL) {
+    return null;
+  }
+
+  if (hourlyDbClient) {
+    return hourlyDbClient;
+  }
+
+  if (hourlyDbInitPromise) {
+    return hourlyDbInitPromise;
+  }
+
+  hourlyDbInitPromise = (async () => {
+    try {
+      const { createClient } = require("@libsql/client");
+      const client = createClient({
+        url: TURSO_DATABASE_URL,
+        authToken: TURSO_AUTH_TOKEN || undefined,
+      });
+
+      await client.execute(`
+        create table if not exists hourly_records (
+          server text not null,
+          hour text not null,
+          request_count integer not null default 0 check (request_count >= 0),
+          error_count integer not null default 0 check (error_count >= 0),
+          primary key (server, hour)
+        )
+      `);
+
+      await client.execute(
+        "create index if not exists idx_hourly_records_server_hour on hourly_records(server, hour)"
+      );
+
+      hourlyDbClient = client;
+      return hourlyDbClient;
+    } catch (error) {
+      if (!hourlyDbInitErrorLogged) {
+        hourlyDbInitErrorLogged = true;
+        console.error(JSON.stringify({
+          message: `Server C could not initialize Turso hourly_records because database setup failed: ${String(error && error.message ? error.message : error).slice(0, 300)}.`,
+          server: "C",
+          ts: new Date().toISOString(),
+          event: "turso_init_failed",
+          detail: String(error && error.message ? error.message : error).slice(0, 300),
+          worker_id: WORKER_ID,
+        }));
+      }
+
+      return null;
+    } finally {
+      hourlyDbInitPromise = null;
+    }
+  })();
+
+  return hourlyDbInitPromise;
+}
+
+function toNonNegativeInteger(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric < 0) {
+    return 0;
+  }
+  return Math.floor(numeric);
+}
+
+async function incrementHourlyRecord(requestDelta, errorDelta) {
+  const client = await getHourlyDbClient();
+  if (!client) {
+    return;
+  }
+
+  const hour = getCurrentUtcHourIso();
+
+  try {
+    await client.execute({
+      sql: `
+        insert into hourly_records (server, hour, request_count, error_count)
+        values ('C', ?, ?, ?)
+        on conflict(server, hour) do update set
+          request_count = request_count + ?,
+          error_count = error_count + ?
+      `,
+      args: [hour, requestDelta, errorDelta, requestDelta, errorDelta],
+    });
+  } catch (error) {
+    console.error(JSON.stringify({
+      message: `Server C could not persist hourly telemetry to Turso because an upsert failed: ${String(error && error.message ? error.message : error).slice(0, 300)}.`,
+      server: "C",
+      ts: new Date().toISOString(),
+      event: "turso_upsert_failed",
+      detail: String(error && error.message ? error.message : error).slice(0, 300),
+      worker_id: WORKER_ID,
+    }));
+  }
+}
+
+async function readCurrentHourStatsFromDb() {
+  const client = await getHourlyDbClient();
+  if (!client) {
+    return null;
+  }
+
+  const hour = getCurrentUtcHourIso();
+
+  try {
+    const result = await client.execute({
+      sql: `
+        select request_count, error_count
+        from hourly_records
+        where server = 'C' and hour = ?
+        limit 1
+      `,
+      args: [hour],
+    });
+
+    const row = Array.isArray(result.rows) && result.rows.length > 0 ? result.rows[0] : null;
+
+    return {
+      hour,
+      requestCount: toNonNegativeInteger(row && row.request_count),
+      errorCount: toNonNegativeInteger(row && row.error_count),
+    };
+  } catch (error) {
+    console.error(JSON.stringify({
+      message: `Server C could not read current-hour telemetry from Turso and is falling back to in-memory counters: ${String(error && error.message ? error.message : error).slice(0, 300)}.`,
+      server: "C",
+      ts: new Date().toISOString(),
+      event: "turso_read_failed",
+      detail: String(error && error.message ? error.message : error).slice(0, 300),
+      worker_id: WORKER_ID,
+    }));
+    return null;
+  }
+}
+
+function getCurrentHourStatsFromMemory() {
   const hour = getCurrentUtcHourIso();
 
   if (statsHour !== hour) {
@@ -182,6 +325,15 @@ function getCurrentHourStats() {
     requestCount: Math.max(0, totalRequests - statsHourRequestBaseline),
     errorCount: Math.max(0, errorCount - statsHourErrorBaseline),
   };
+}
+
+async function getCurrentHourStats() {
+  const dbStats = await readCurrentHourStatsFromDb();
+  if (dbStats) {
+    return dbStats;
+  }
+
+  return getCurrentHourStatsFromMemory();
 }
 
 function getResolveRuntimeStats() {
@@ -367,7 +519,7 @@ async function handler(req, res) {
       return;
     }
 
-    const stats = getCurrentHourStats();
+    const stats = await getCurrentHourStats();
     res.statusCode = 200;
     res.setHeader("Content-Type", "application/json");
     res.end(JSON.stringify({
@@ -455,6 +607,7 @@ async function handler(req, res) {
     }
 
     totalRequests++;
+    await incrementHourlyRecord(1, 0);
     const t0 = Date.now();
     try {
       const directUrl = await runYtDlp(inputUrl);
@@ -470,6 +623,7 @@ async function handler(req, res) {
       if (!directUrl || !directUrl.startsWith("http")) {
         // Count as an error for state purposes
         errorCount++;
+        await incrementHourlyRecord(0, 1);
         lastResolve = { timestamp: new Date().toISOString(), ok: false, durationMs };
         resolveState = "degraded";
         const errText = "yt-dlp returned empty or invalid url";
@@ -500,6 +654,7 @@ async function handler(req, res) {
       const durationMs = Date.now() - t0;
       totalDurationMs += durationMs;
       errorCount++;
+      await incrementHourlyRecord(0, 1);
       const errText = String(e && e.message ? e.message : e).slice(0, 1200);
       lastResolve = { timestamp: new Date().toISOString(), ok: false, durationMs };
       lastResolveError = errText;
